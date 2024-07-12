@@ -1,18 +1,41 @@
+
 #!/usr/bin/env bash
+# Function to query DNS records for a domain and subdomain
+query_dns() {
+    domain="$1"
+    subdomain="$2"
 
-#shellcheck disable=SC2086
-# Information about server domains
+    # Query DNS records
+    dns_output=$(dig +short "$subdomain.$domain")
 
-check_domain() {
-    # Check for a valid domain
-    SUBDOMAINS=("www"  "lb-01" "web-01" "web-02")
-    if [ -z "$2" ]; then
-	for i in "${SUBDOMAINS[@]}"; do
-	    dig "$i.$1" | grep -A1 'ANSWER SECTION:' | tail -n1 | awk '{split($0, SUBDOMAIN, "."); print "The subdomain " SUBDOMAIN[1] " is a " $4 " record and points to " $5}'
-	done
-    else
-	dig "$2.$1" | grep -A1 'ANSWER SECTION:' | tail -n1 | awk '{split($0, SUBDOMAIN, "."); print "The subdomain " SUBDOMAIN[1] " is a " $4 " record and points to " $5}'
+    # Check if DNS query returned any records
+    if [ -n "$dns_output" ]; then
+    	dns_output=$(dig "$subdomain.$domain")
+		record_type=$(echo "$dns_output" | awk '/ANSWER SECTION/ {getline; print $4}')
+		destination=$(echo "$dns_output" | awk '/ANSWER SECTION/ {getline; print $5}')
+
+		formatted_output="The subdomain $2 is a $record_type record and points to $destination"
+
+        echo "$formatted_output"
     fi
 }
 
-check_domain "$1" "$2"
+# Check if the number of arguments is correct
+if [ "$#" -lt 1 ]; then
+    echo "Usage: $0 <domain> [subdomain]"
+    exit 1
+fi
+
+# Extract arguments
+domain="$1"
+subdomains=("www" "lb-01" "web-01" "web-02")
+
+if [ -n "$2" ]; then
+    subdomains=("$2")
+fi
+
+# Loop through each subdomain and query DNS records
+for subdomain in "${subdomains[@]}"; do
+    query_dns "$domain" "$subdomain"
+done
+
