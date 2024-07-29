@@ -1,3 +1,2 @@
 #!/bin/bash
-# Print the list of all environment variables
 Printenv
